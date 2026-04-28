@@ -1,0 +1,33 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "mini-interact-agent"
+version = "0.0.1"
+description = "BIRD-Interact mini knowledge-based agent harness (vendored as a dependency of bird-interact-agents)"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+dependencies = [
+    "jsonlines>=4.0",
+    "tqdm>=4.66",
+    "psycopg2-binary>=2.9",
+    "openai>=1.0",
+    "anthropic>=0.34",
+    "google-generativeai>=0.7",
+    "litellm>=1.0",
+    # `src/envs/__init__.py` (loaded transitively by batch_run_bird_interact)
+    # imports gymnasium even in mini_interact (SQLite) mode.
+    "gymnasium>=0.29",
+    "sqlglot>=23",
+    "rich>=13",
+    "scipy>=1.10",
+    "pandas>=2.0",
+    "docker>=7.0",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["batch_run_bird_interact", "src"]
+
+[tool.hatch.metadata]
+allow-direct-references = true

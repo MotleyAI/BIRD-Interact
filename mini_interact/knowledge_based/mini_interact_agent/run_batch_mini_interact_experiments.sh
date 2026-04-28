@@ -41,7 +41,7 @@ LOG_LEVEL="WARNING"
 while (( "$#" )); do
   case "$1" in
     --data_path=*) DATA_PATH="${1#*=}"; shift ;;
-    --agent_models=*) AGENT_MODELS="${1#*=}"; shift ;;
+    --agent_models=*) IFS=',' read -r -a AGENT_MODEL_NAMES <<< "${1#*=}"; shift ;;
     --user_model=*) USER_MODEL_NAME="${1#*=}"; shift ;;
     --user_sim_mode=*) USER_SIM_MODE="${1#*=}"; shift ;;
     --user_sim_prompt_version=*) USER_SIM_PROMPT_VERSION="${1#*=}"; shift ;;
