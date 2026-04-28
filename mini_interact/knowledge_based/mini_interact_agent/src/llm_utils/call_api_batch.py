@@ -205,6 +205,30 @@ def api_request(messages, engine, client, backend, **kwargs):
                 logging.debug(f"Token usage (OpenAI): {token_usage}")
                 return reasoning_content, content, token_usage
 
+            elif backend == "litellm":
+                # Provider-prefixed model strings (cerebras/zai-glm-4.7,
+                # openrouter/z-ai/glm-4.7-flash, anthropic/claude-..., ...)
+                # go through LiteLLM, which resolves base URL + reads the
+                # matching env var (CEREBRAS_API_KEY etc.) automatically.
+                import litellm
+
+                completion = litellm.completion(
+                    model=engine,
+                    messages=messages,
+                    temperature=kwargs.get("temperature", 0),
+                    max_tokens=kwargs.get("max_tokens", 512),
+                    top_p=kwargs.get("top_p", 1),
+                    stop=kwargs.get("stop", None),
+                )
+                content = completion.choices[0].message.content
+                u = getattr(completion, "usage", None)
+                token_usage = {
+                    "prompt_tokens": getattr(u, "prompt_tokens", 0),
+                    "completion_tokens": getattr(u, "completion_tokens", 0),
+                    "total_tokens": getattr(u, "total_tokens", 0),
+                } if u else {}
+                logging.debug(f"Token usage (LiteLLM {engine}): {token_usage}")
+                return None, content, token_usage
             elif backend == "anthropic":
                 message = client.messages.create(
                     model=engine,
@@ -407,8 +431,16 @@ def call_api_model(
 
     # --- Backend/Client Setup Logic ---
 
+    # LiteLLM-prefixed model strings (cerebras/..., openrouter/...,
+    # anthropic/..., fireworks_ai/..., zhipu/...) bypass the hand-rolled
+    # ladder below. LiteLLM resolves the base URL and reads the matching
+    # provider env var (CEREBRAS_API_KEY, OPENROUTER_API_KEY, ...).
+    if "/" in model_name:
+        backend = "litellm"
+        engine = model_name
+        client = None  # LiteLLM is stateless; no client object needed.
     # --- Vertex AI Model Routing (Modified) ---
-    if model_name in [
+    elif model_name in [
         "gemini-2.5-pro-preview-03-25",  # Use the EXACT Vertex AI model ID
         "gemini-2.0-flash-001",
         "gemini-2.0-flash",
