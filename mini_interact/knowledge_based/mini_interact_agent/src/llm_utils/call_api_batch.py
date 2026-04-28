@@ -212,14 +212,20 @@ def api_request(messages, engine, client, backend, **kwargs):
                 # matching env var (CEREBRAS_API_KEY etc.) automatically.
                 import litellm
 
-                completion = litellm.completion(
-                    model=engine,
-                    messages=messages,
-                    temperature=kwargs.get("temperature", 0),
-                    max_tokens=kwargs.get("max_tokens", 512),
-                    top_p=kwargs.get("top_p", 1),
-                    stop=kwargs.get("stop", None),
-                )
+                # Some Anthropic models (Haiku 4.5+) reject calls that
+                # carry both temperature and top_p; default top_p=1 is a
+                # no-op so we just drop it.
+                _params = {
+                    "model": engine,
+                    "messages": messages,
+                    "temperature": kwargs.get("temperature", 0),
+                    "max_tokens": kwargs.get("max_tokens", 512),
+                    "stop": kwargs.get("stop", None),
+                }
+                _top_p = kwargs.get("top_p", 1)
+                if _top_p != 1:
+                    _params["top_p"] = _top_p
+                completion = litellm.completion(**_params)
                 content = completion.choices[0].message.content
                 u = getattr(completion, "usage", None)
                 token_usage = {
@@ -554,8 +560,10 @@ def call_api_model(
         logging.error(f"ERROR: Unsupported model name: {model_name}")
         raise ValueError(f"Unsupported model name: {model_name}")
 
-    # Ensure client and backend were set
-    if client is None or backend is None:
+    # Ensure backend was set. The litellm branch deliberately leaves
+    # client=None (litellm.completion is stateless), so only require
+    # client when the backend isn't litellm.
+    if backend is None or (backend != "litellm" and client is None):
         raise RuntimeError(
             f"Could not configure client or backend for model: {model_name}"
         )
