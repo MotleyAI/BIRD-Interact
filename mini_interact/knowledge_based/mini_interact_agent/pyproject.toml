@@ -27,7 +27,7 @@ dependencies = [
 ]
 
 [tool.hatch.build.targets.wheel]
-packages = ["batch_run_bird_interact", "src"]
+packages = ["batch_run_bird_interact", "experiments", "src"]
 
 [tool.hatch.metadata]
 allow-direct-references = true
